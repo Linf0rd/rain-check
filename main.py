@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from weather_service import WeatherService
-from visualization import create_hourly_temp_chart, create_daily_temp_chart, create_historical_temp_chart
+from visualization import create_hourly_temp_chart, create_daily_temp_chart
 from styles import apply_custom_styles, get_weather_icon
 
 # Page configuration
@@ -45,7 +45,6 @@ try:
         try:
             with st.spinner("Fetching weather data..."):
                 weather_data = weather_service.get_weather_data(city)
-                historical_data = weather_service.get_historical_data(city)
 
                 # Current weather
                 current = weather_data['current']
@@ -108,13 +107,6 @@ try:
                             <div class="condition-text">Pressure</div>
                         </div>
                     """, unsafe_allow_html=True)
-
-                # Historical weather data
-                st.subheader("Historical Weather Trends")
-                if historical_data:
-                    st.plotly_chart(create_historical_temp_chart(historical_data), use_container_width=True)
-                else:
-                    st.info("Historical data not available for this location")
 
                 # Hourly forecast
                 st.subheader("Hourly Forecast")

@@ -3,7 +3,7 @@ import os
 from datetime import datetime, timedelta
 import pandas as pd
 from sqlalchemy.orm import Session
-from database import get_db, SearchHistory, WeatherCache, HistoricalWeather
+from database import get_db, SearchHistory, WeatherCache
 
 class WeatherService:
     def __init__(self):
@@ -26,6 +26,7 @@ class WeatherService:
                     self.db.add(search_history)
                     self.db.commit()
                 except Exception:
+                    # Ignore database errors and continue with weather data fetch
                     if self.db:
                         self.db.rollback()
 
@@ -38,6 +39,7 @@ class WeatherService:
                         WeatherCache.timestamp > datetime.utcnow() - timedelta(minutes=30)
                     ).first()
                 except Exception:
+                    # Ignore cache errors and continue with fresh data fetch
                     if self.db:
                         self.db.rollback()
 
@@ -48,8 +50,8 @@ class WeatherService:
                     "daily": cached_data.daily_data
                 }
 
-            # Get coordinates first
-            geocoding_url = "http://api.openweathermap.org/geo/1.0/direct"
+            # Get coordinates
+            geocoding_url = "https://api.openweathermap.org/geo/1.0/direct"
             params = {
                 "q": city,
                 "limit": 1,
@@ -105,6 +107,7 @@ class WeatherService:
                     self.db.add(weather_cache)
                     self.db.commit()
                 except Exception:
+                    # Ignore cache storage errors
                     if self.db:
                         self.db.rollback()
 
@@ -115,14 +118,12 @@ class WeatherService:
             }
 
         except requests.exceptions.RequestException as e:
-            print(f"API Request Error: {str(e)}")  # Add logging
             if "401" in str(e):
                 raise ValueError("Invalid API key. Please check your OpenWeather API key.")
             raise Exception(f"Error fetching weather data: {str(e)}")
         except ValueError as e:
             raise ValueError(str(e))
         except Exception as e:
-            print(f"Unexpected Error: {str(e)}")  # Add logging
             raise Exception(f"An unexpected error occurred: {str(e)}")
 
     def process_hourly_forecast(self, data):
@@ -182,117 +183,3 @@ class WeatherService:
                     break
 
         return daily_data
-
-    def get_historical_data(self, city, days=30):
-        """Fetch historical weather data for the past number of days"""
-        try:
-            if not city:
-                raise ValueError("City name cannot be empty")
-
-            # Get coordinates first
-            geocoding_url = "https://api.openweathermap.org/geo/1.0/direct"
-            params = {
-                "q": city,
-                "limit": 1,
-                "appid": self.api_key
-            }
-            location_response = requests.get(geocoding_url, params=params)
-            if location_response.status_code == 401:
-                raise ValueError("Invalid API key. Please check your OpenWeather API key.")
-            location_response.raise_for_status()
-            location = location_response.json()
-
-            if not location:
-                raise ValueError(f"City '{city}' not found")
-
-            lat, lon = location[0]['lat'], location[0]['lon']
-
-            # Check database for existing historical data
-            if self.db:
-                try:
-                    historical_data = []
-                    start_date = datetime.now().date() - timedelta(days=days)
-                    db_data = self.db.query(HistoricalWeather).filter(
-                        HistoricalWeather.city == city,
-                        HistoricalWeather.date >= start_date
-                    ).all()
-
-                    if db_data:
-                        return [{'date': data.date,
-                                'temp_max': data.temp_max,
-                                'temp_min': data.temp_min,
-                                'temp_avg': data.temp_avg,
-                                'humidity': data.humidity,
-                                'pressure': data.pressure,
-                                'wind_speed': data.wind_speed,
-                                'weather_description': data.weather_description}
-                               for data in db_data]
-                except Exception:
-                    if self.db:
-                        self.db.rollback()
-
-            # If no cached data, fetch from API
-            historical_data = []
-            current_date = datetime.now()
-
-            for day in range(days):
-                date = current_date - timedelta(days=day)
-                timestamp = int(date.timestamp())
-
-                # Use OpenWeather historical data API
-                historical_url = f"{self.base_url}/onecall/timemachine"
-                params = {
-                    "lat": lat,
-                    "lon": lon,
-                    "dt": timestamp,
-                    "appid": self.api_key,
-                    "units": "metric"
-                }
-
-                try:
-                    response = requests.get(historical_url, params=params)
-                    if response.status_code == 401:
-                        raise ValueError("Invalid API key. Please check your OpenWeather API key.")
-                    response.raise_for_status()
-                    data = response.json()
-
-                    daily_data = {
-                        'date': date.date(),
-                        'temp_max': data['current']['temp'],
-                        'temp_min': data['current']['temp'],
-                        'temp_avg': data['current']['temp'],
-                        'humidity': data['current']['humidity'],
-                        'pressure': data['current']['pressure'],
-                        'wind_speed': data['current']['wind_speed'],
-                        'weather_description': data['current']['weather'][0]['description']
-                    }
-
-                    historical_data.append(daily_data)
-
-                    # Store in database if available
-                    if self.db:
-                        try:
-                            db_record = HistoricalWeather(
-                                city=city,
-                                **daily_data
-                            )
-                            self.db.add(db_record)
-                            self.db.commit()
-                        except Exception:
-                            if self.db:
-                                self.db.rollback()
-
-                except requests.exceptions.RequestException as e:
-                    print(f"Error fetching historical data for {date.date()}: {str(e)}")
-                    continue
-
-            return historical_data
-
-        except requests.exceptions.RequestException as e:
-            if "401" in str(e):
-                raise ValueError("Invalid API key. Please check your OpenWeather API key.")
-            raise Exception(f"Error fetching historical weather data: {str(e)}")
-        except ValueError as e:
-            raise ValueError(str(e))
-        except Exception as e:
-            raise Exception(f"An unexpected error occurred: {str(e)}")

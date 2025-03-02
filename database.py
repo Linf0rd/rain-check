@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, JSON, Date
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
@@ -40,22 +40,6 @@ class WeatherCache(Base):
     current_data = Column(JSON)
     hourly_data = Column(JSON)
     daily_data = Column(JSON)
-    timestamp = Column(DateTime, default=datetime.utcnow)
-
-class HistoricalWeather(Base):
-    """Store historical weather data"""
-    __tablename__ = "historical_weather"
-
-    id = Column(Integer, primary_key=True, index=True)
-    city = Column(String, nullable=False)
-    date = Column(Date, nullable=False)
-    temp_max = Column(Float)
-    temp_min = Column(Float)
-    temp_avg = Column(Float)
-    humidity = Column(Float)
-    pressure = Column(Float)
-    wind_speed = Column(Float)
-    weather_description = Column(String)
     timestamp = Column(DateTime, default=datetime.utcnow)
 
 # Create all tables
