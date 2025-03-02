@@ -22,8 +22,19 @@ try:
     st.title("📱 Weather Forecast")
     st.markdown("Get detailed weather forecasts for any location")
 
-    # Search bar
-    city = st.text_input("Enter city name", "London")
+    # Get list of popular cities for suggestions
+    popular_cities = [
+        "Johannesburg", "Cape Town", "Durban", "Pretoria", "Port Elizabeth",
+        "London", "New York", "Tokyo", "Paris", "Sydney", "Dubai"
+    ]
+
+    # Search bar with autocomplete
+    city = st.selectbox(
+        "Enter city name",
+        options=popular_cities,
+        index=0,  # Set Johannesburg as default
+        key="city_search"
+    )
 
     # Add Font Awesome
     st.markdown("""
@@ -37,7 +48,7 @@ try:
 
                 # Current weather
                 current = weather_data['current']
-                col1, col2, col3 = st.columns(3)
+                col1, col2, col3, col4 = st.columns(4)
 
                 with col1:
                     st.markdown(f"""
@@ -51,18 +62,47 @@ try:
                 with col2:
                     st.markdown(f"""
                         <div class="weather-card">
-                            <i class="fas fa-tint weather-icon"></i>
-                            <div class="temp-text">{current['main']['humidity']}%</div>
-                            <div class="condition-text">Humidity</div>
+                            <i class="fas fa-temperature-high weather-icon"></i>
+                            <div class="temp-text">{round(current['main']['temp_max'])}°C</div>
+                            <div class="condition-text">Max Temperature</div>
                         </div>
                     """, unsafe_allow_html=True)
 
                 with col3:
                     st.markdown(f"""
                         <div class="weather-card">
+                            <i class="fas fa-temperature-low weather-icon"></i>
+                            <div class="temp-text">{round(current['main']['temp_min'])}°C</div>
+                            <div class="condition-text">Min Temperature</div>
+                        </div>
+                    """, unsafe_allow_html=True)
+
+                with col4:
+                    st.markdown(f"""
+                        <div class="weather-card">
                             <i class="fas fa-wind weather-icon"></i>
                             <div class="temp-text">{round(current['wind']['speed'])} m/s</div>
                             <div class="condition-text">Wind Speed</div>
+                        </div>
+                    """, unsafe_allow_html=True)
+
+                # Additional weather info
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown(f"""
+                        <div class="weather-card">
+                            <i class="fas fa-tint weather-icon"></i>
+                            <div class="temp-text">{current['main']['humidity']}%</div>
+                            <div class="condition-text">Humidity</div>
+                        </div>
+                    """, unsafe_allow_html=True)
+
+                with col2:
+                    st.markdown(f"""
+                        <div class="weather-card">
+                            <i class="fas fa-compress-arrows-alt weather-icon"></i>
+                            <div class="temp-text">{current['main']['pressure']} hPa</div>
+                            <div class="condition-text">Pressure</div>
                         </div>
                     """, unsafe_allow_html=True)
 
@@ -90,8 +130,7 @@ try:
                     with col2:
                         st.markdown(f"""
                             <div class="weather-card">
-                                <div>Day: {row['temp_day']}°C</div>
-                                <div>Night: {row['temp_night']}°C</div>
+                                <div>High: {row['temp_day']}°C | Low: {row['temp_night']}°C</div>
                                 <div>{row['weather'][0]['description'].capitalize()}</div>
                             </div>
                         """, unsafe_allow_html=True)
