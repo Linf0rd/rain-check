@@ -14,33 +14,31 @@ st.set_page_config(
 # Apply custom styles
 apply_custom_styles()
 
-# Initialize weather service
-weather_service = WeatherService()
-
-# Header
-st.title("📱 Weather Forecast")
-st.markdown("Get detailed weather forecasts for any location")
-
-# Search bar
-city = st.text_input("Enter city name", "London")
-
-# Add Font Awesome
-st.markdown("""
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-""", unsafe_allow_html=True)
-
 try:
+    # Initialize weather service
+    weather_service = WeatherService()
+
+    # Header
+    st.title("📱 Weather Forecast")
+    st.markdown("Get detailed weather forecasts for any location")
+
+    # Search bar
+    city = st.text_input("Enter city name", "London")
+
+    # Add Font Awesome
+    st.markdown("""
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    """, unsafe_allow_html=True)
+
     if city:
-        with st.spinner("Fetching weather data..."):
-            weather_data = weather_service.get_weather_data(city)
-            
-            if weather_data is None:
-                st.error("City not found. Please try another location.")
-            else:
+        try:
+            with st.spinner("Fetching weather data..."):
+                weather_data = weather_service.get_weather_data(city)
+
                 # Current weather
                 current = weather_data['current']
                 col1, col2, col3 = st.columns(3)
-                
+
                 with col1:
                     st.markdown(f"""
                         <div class="weather-card">
@@ -49,7 +47,7 @@ try:
                             <div class="condition-text">{current['weather'][0]['description'].capitalize()}</div>
                         </div>
                     """, unsafe_allow_html=True)
-                
+
                 with col2:
                     st.markdown(f"""
                         <div class="weather-card">
@@ -58,7 +56,7 @@ try:
                             <div class="condition-text">Humidity</div>
                         </div>
                     """, unsafe_allow_html=True)
-                
+
                 with col3:
                     st.markdown(f"""
                         <div class="weather-card">
@@ -67,17 +65,17 @@ try:
                             <div class="condition-text">Wind Speed</div>
                         </div>
                     """, unsafe_allow_html=True)
-                
+
                 # Hourly forecast
                 st.subheader("Hourly Forecast")
                 hourly_data = weather_service.process_hourly_forecast(weather_data)
                 st.plotly_chart(create_hourly_temp_chart(hourly_data), use_container_width=True)
-                
+
                 # Daily forecast
                 st.subheader("7-Day Forecast")
                 daily_data = weather_service.process_daily_forecast(weather_data)
                 st.plotly_chart(create_daily_temp_chart(daily_data), use_container_width=True)
-                
+
                 # Detailed daily forecast
                 st.subheader("Detailed Daily Forecast")
                 for _, row in daily_data.iterrows():
@@ -98,8 +96,13 @@ try:
                             </div>
                         """, unsafe_allow_html=True)
 
+        except ValueError as e:
+            st.error(f"⚠️ {str(e)}")
+        except Exception as e:
+            st.error(f"⚠️ Error: {str(e)}\nPlease try again later.")
+
 except Exception as e:
-    st.error(f"An error occurred: {str(e)}")
+    st.error("⚠️ Failed to initialize weather service. Please check if the API key is correctly set.")
 
 # Footer
 st.markdown("---")

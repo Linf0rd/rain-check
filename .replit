@@ -33,3 +33,7 @@ task = "packager.installForAll"
 task = "shell.exec"
 args = "streamlit run main.py"
 waitForPort = 5000
+
+[[ports]]
+localPort = 5000
+externalPort = 80
