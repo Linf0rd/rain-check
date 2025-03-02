@@ -38,7 +38,7 @@ class WeatherService:
                 }
 
             # Get coordinates
-            geocoding_url = f"https://api.openweathermap.org/geo/1.0/direct"
+            geocoding_url = "https://api.openweathermap.org/geo/1.0/direct"
             params = {
                 "q": city,
                 "limit": 1,
@@ -69,17 +69,16 @@ class WeatherService:
             current_data = current_response.json()
 
             # Get forecast data
-            forecast_params = {
-                "lat": lat,
-                "lon": lon,
-                "appid": self.api_key,
-                "units": "metric"
-            }
+            forecast_params = current_params.copy()  # Use same parameters as current weather
             forecast_response = requests.get(f"{self.base_url}/forecast", params=forecast_params)
             if forecast_response.status_code == 401:
                 raise ValueError("Invalid API key. Please check your OpenWeather API key.")
             forecast_response.raise_for_status()
             forecast_data = forecast_response.json()
+
+            # Process forecast data
+            hourly_data = forecast_data["list"][:8]  # Next 24 hours (3-hour intervals)
+            daily_data = self._process_daily_from_forecast(forecast_data["list"])
 
             # Store in cache
             weather_cache = WeatherCache(
@@ -87,17 +86,16 @@ class WeatherService:
                 lat=lat,
                 lon=lon,
                 current_data=current_data,
-                hourly_data=forecast_data["list"][:8],
-                daily_data=self._process_daily_from_forecast(forecast_data["list"])
+                hourly_data=hourly_data,
+                daily_data=daily_data
             )
             self.db.add(weather_cache)
             self.db.commit()
 
-            # Return combined data
             return {
                 "current": current_data,
-                "hourly": forecast_data["list"][:8],
-                "daily": self._process_daily_from_forecast(forecast_data["list"])
+                "hourly": hourly_data,
+                "daily": daily_data
             }
 
         except requests.exceptions.RequestException as e:
@@ -109,6 +107,38 @@ class WeatherService:
         except Exception as e:
             raise Exception(f"An unexpected error occurred: {str(e)}")
 
+    def process_hourly_forecast(self, data):
+        """Process hourly forecast data"""
+        try:
+            df = pd.DataFrame([{
+                'hour': datetime.fromtimestamp(item['dt']).strftime('%H:%M'),
+                'temp': item['main']['temp'],
+                'weather': item['weather']
+            } for item in data['hourly']])
+
+            df['temp'] = df['temp'].round(1)
+            return df
+
+        except Exception as e:
+            raise Exception(f"Error processing hourly forecast: {str(e)}")
+
+    def process_daily_forecast(self, data):
+        """Process daily forecast data"""
+        try:
+            df = pd.DataFrame([{
+                'day': datetime.fromtimestamp(item['dt']).strftime('%A'),
+                'temp_day': item['main']['temp_max'],
+                'temp_night': item['main']['temp_min'],
+                'weather': item['weather']
+            } for item in data['daily']])
+
+            df['temp_day'] = df['temp_day'].round(1)
+            df['temp_night'] = df['temp_night'].round(1)
+            return df
+
+        except Exception as e:
+            raise Exception(f"Error processing daily forecast: {str(e)}")
+
     def _process_daily_from_forecast(self, forecast_list):
         """Process 5-day forecast data into daily format"""
         daily_data = []
@@ -118,11 +148,13 @@ class WeatherService:
             date = datetime.fromtimestamp(item['dt']).date()
 
             if date != current_date:
+                temp_data = item['main']
                 daily_data.append({
                     'dt': item['dt'],
-                    'temp': {
-                        'day': item['main']['temp'],
-                        'night': item['main']['temp_min']
+                    'main': {
+                        'temp_max': temp_data['temp_max'],
+                        'temp_min': temp_data['temp_min'],
+                        'temp': temp_data['temp']
                     },
                     'weather': item['weather']
                 })
@@ -132,33 +164,3 @@ class WeatherService:
                     break
 
         return daily_data
-
-    def process_hourly_forecast(self, data):
-        """Process hourly forecast data"""
-        try:
-            hourly = data['hourly']  # Next 24 hours (3-hour intervals)
-            df = pd.DataFrame([{
-                'dt': item['dt'],
-                'temp': item['main']['temp'],
-                'weather': item['weather']
-            } for item in hourly])
-
-            df['datetime'] = pd.to_datetime(df['dt'], unit='s')
-            df['hour'] = df['datetime'].dt.strftime('%H:%M')
-            df['temp'] = df['temp'].round(1)
-            return df[['hour', 'temp', 'weather']]
-        except Exception as e:
-            raise Exception(f"Error processing hourly forecast: {str(e)}")
-
-    def process_daily_forecast(self, data):
-        """Process daily forecast data"""
-        try:
-            daily = data['daily']  # Next 7 days
-            df = pd.DataFrame(daily)
-            df['datetime'] = pd.to_datetime(df['dt'], unit='s')
-            df['day'] = df['datetime'].dt.strftime('%A')
-            df['temp_day'] = df['temp'].apply(lambda x: round(x['day'], 1))
-            df['temp_night'] = df['temp'].apply(lambda x: round(x['night'], 1))
-            return df[['day', 'temp_day', 'temp_night', 'weather']]
-        except Exception as e:
-            raise Exception(f"Error processing daily forecast: {str(e)}")
