@@ -78,10 +78,12 @@ try:
                     """, unsafe_allow_html=True)
 
                 with col4:
+                    # Convert wind speed from m/s to km/h (multiply by 3.6)
+                    wind_speed_kmh = round(current['wind']['speed'] * 3.6)
                     st.markdown(f"""
                         <div class="weather-card">
                             <i class="fas fa-wind weather-icon"></i>
-                            <div class="temp-text">{round(current['wind']['speed'])} m/s</div>
+                            <div class="temp-text">{wind_speed_kmh} km/h</div>
                             <div class="condition-text">Wind Speed</div>
                         </div>
                     """, unsafe_allow_html=True)
@@ -130,7 +132,10 @@ try:
                     with col2:
                         st.markdown(f"""
                             <div class="weather-card">
-                                <div>High: {row['temp_day']}°C | Low: {row['temp_night']}°C</div>
+                                <div style="font-size: 1.2rem">
+                                    <span style="color: #FF4B4B">High: {row['temp_day']}°C</span> | 
+                                    <span style="color: #4B9FFF">Low: {row['temp_night']}°C</span>
+                                </div>
                                 <div>{row['weather'][0]['description'].capitalize()}</div>
                             </div>
                         """, unsafe_allow_html=True)
