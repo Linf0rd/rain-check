@@ -19,8 +19,8 @@ try:
     weather_service = WeatherService()
 
     # Header
-    st.title("📱 Weather Forecast")
-    st.markdown("Get detailed weather forecasts for any location")
+    st.title("🌤 Rain Check")
+    st.markdown("Get detailed weather forecasts for any location.")
 
     # Get list of popular cities for suggestions
     popular_cities = [
