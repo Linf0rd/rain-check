@@ -11,7 +11,7 @@ class WeatherService:
         if not self.api_key:
             raise ValueError("OpenWeather API key not found. Please set the OPENWEATHER_API_KEY environment variable.")
         self.base_url = "https://api.openweathermap.org/data/2.5"
-        self.db = next(get_db())
+        self.db = get_db()  # May be None if database connection fails
 
     def get_weather_data(self, city):
         """Fetch weather data for a given city"""
@@ -19,16 +19,29 @@ class WeatherService:
             if not city:
                 raise ValueError("City name cannot be empty")
 
-            # Store search history
-            search_history = SearchHistory(city=city)
-            self.db.add(search_history)
-            self.db.commit()
+            # Try to store search history if database is available
+            if self.db:
+                try:
+                    search_history = SearchHistory(city=city)
+                    self.db.add(search_history)
+                    self.db.commit()
+                except Exception:
+                    # Ignore database errors and continue with weather data fetch
+                    if self.db:
+                        self.db.rollback()
 
-            # Check cache first
-            cached_data = self.db.query(WeatherCache).filter(
-                WeatherCache.city == city,
-                WeatherCache.timestamp > datetime.utcnow() - timedelta(minutes=30)
-            ).first()
+            # Try to get cached data if database is available
+            cached_data = None
+            if self.db:
+                try:
+                    cached_data = self.db.query(WeatherCache).filter(
+                        WeatherCache.city == city,
+                        WeatherCache.timestamp > datetime.utcnow() - timedelta(minutes=30)
+                    ).first()
+                except Exception:
+                    # Ignore cache errors and continue with fresh data fetch
+                    if self.db:
+                        self.db.rollback()
 
             if cached_data:
                 return {
@@ -69,7 +82,7 @@ class WeatherService:
             current_data = current_response.json()
 
             # Get forecast data
-            forecast_params = current_params.copy()  # Use same parameters as current weather
+            forecast_params = current_params.copy()
             forecast_response = requests.get(f"{self.base_url}/forecast", params=forecast_params)
             if forecast_response.status_code == 401:
                 raise ValueError("Invalid API key. Please check your OpenWeather API key.")
@@ -80,17 +93,23 @@ class WeatherService:
             hourly_data = forecast_data["list"][:8]  # Next 24 hours (3-hour intervals)
             daily_data = self._process_daily_from_forecast(forecast_data["list"])
 
-            # Store in cache
-            weather_cache = WeatherCache(
-                city=city,
-                lat=lat,
-                lon=lon,
-                current_data=current_data,
-                hourly_data=hourly_data,
-                daily_data=daily_data
-            )
-            self.db.add(weather_cache)
-            self.db.commit()
+            # Try to store in cache if database is available
+            if self.db:
+                try:
+                    weather_cache = WeatherCache(
+                        city=city,
+                        lat=lat,
+                        lon=lon,
+                        current_data=current_data,
+                        hourly_data=hourly_data,
+                        daily_data=daily_data
+                    )
+                    self.db.add(weather_cache)
+                    self.db.commit()
+                except Exception:
+                    # Ignore cache storage errors
+                    if self.db:
+                        self.db.rollback()
 
             return {
                 "current": current_data,

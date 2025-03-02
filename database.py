@@ -3,10 +3,21 @@ from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import QueuePool
 
 # Database connection
 DATABASE_URL = os.getenv('DATABASE_URL')
-engine = create_engine(DATABASE_URL)
+engine = create_engine(
+    DATABASE_URL,
+    pool_size=5,
+    max_overflow=10,
+    pool_timeout=30,
+    pool_recycle=1800,
+    pool_pre_ping=True,
+    connect_args={
+        "sslmode": "require"
+    }
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -35,9 +46,13 @@ class WeatherCache(Base):
 Base.metadata.create_all(bind=engine)
 
 def get_db():
-    """Get database session"""
-    db = SessionLocal()
+    """Get database session with error handling"""
+    db = None
     try:
-        yield db
-    finally:
-        db.close()
+        db = SessionLocal()
+        return db
+    except Exception as e:
+        if db:
+            db.close()
+        print(f"Database connection error: {str(e)}")
+        return None
