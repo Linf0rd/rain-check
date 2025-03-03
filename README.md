@@ -1,5 +1,7 @@
 # Rain Check
 
+![image](https://github.com/user-attachments/assets/8c6149f1-08b8-44ca-9cbc-e29a21df9ec6)
+
 Rain Check is a web application that provides weather information for a given city. It allows users to search for weather forecasts and view current weather conditions, hourly forecasts, and a detailed daily forecast.
 
 ## Features
@@ -80,3 +82,10 @@ The project uses a PostgreSQL database to store search history and cached weathe
     *   `hourly_data` (JSON)
     *   `daily_data` (JSON)
     *   `timestamp` (DATETIME)
+      
+
+
+ 
+
+
+
