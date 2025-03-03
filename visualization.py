@@ -33,7 +33,7 @@ def create_daily_temp_chart(df):
         name='Temperature Range',
         x=df['day'],
         y=df['temp_day'],
-        base=df['temp_night'],
+        base=0,
         marker_color='rgba(30, 136, 229, 0.3)',
         hovertemplate='High: %{y}°C<br>Low: %{base}°C<extra></extra>'
     ))

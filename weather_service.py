@@ -80,6 +80,8 @@ class WeatherService:
                 raise ValueError("Invalid API key. Please check your OpenWeather API key.")
             current_response.raise_for_status()
             current_data = current_response.json()
+            # Log the API response for current weather
+            print("Current Weather API Response:", current_response.json())
 
             # Get forecast data
             forecast_params = current_params.copy()
@@ -88,6 +90,8 @@ class WeatherService:
                 raise ValueError("Invalid API key. Please check your OpenWeather API key.")
             forecast_response.raise_for_status()
             forecast_data = forecast_response.json()
+            # Log the API response for forecast data
+            print("Forecast API Response:", forecast_response.json())
 
             # Process forecast data
             hourly_data = forecast_data["list"][:8]  # Next 24 hours (3-hour intervals)
@@ -149,7 +153,7 @@ class WeatherService:
                 'temp_day': item['main']['temp_max'],
                 'temp_night': item['main']['temp_min'],
                 'weather': item['weather']
-            } for item in data['daily']])
+            } for item in data])
 
             df['temp_day'] = df['temp_day'].round(1)
             df['temp_night'] = df['temp_night'].round(1)
@@ -162,24 +166,44 @@ class WeatherService:
         """Process 5-day forecast data into daily format"""
         daily_data = []
         current_date = None
+        daily_temps_max = []
+        daily_temps_min = []
+        last_dt = None
 
         for item in forecast_list:
             date = datetime.fromtimestamp(item['dt']).date()
 
             if date != current_date:
-                temp_data = item['main']
-                daily_data.append({
-                    'dt': item['dt'],
-                    'main': {
-                        'temp_max': temp_data['temp_max'],
-                        'temp_min': temp_data['temp_min'],
-                        'temp': temp_data['temp']
-                    },
-                    'weather': item['weather']
-                })
-                current_date = date
+                if current_date:
+                    daily_data.append({
+                        'dt': last_dt,
+                        'main': {
+                            'temp_max': max(daily_temps_max),
+                            'temp_min': min(daily_temps_min),
+                        },
+                        'weather': item['weather']
+                    })
+                    daily_temps_max = []
+                    daily_temps_min = []
 
-                if len(daily_data) >= 7:
-                    break
+                current_date = date
+            
+            last_dt = item['dt']
+            daily_temps_max.append(item['main']['temp_max'])
+            daily_temps_min.append(item['main']['temp_min'])
+
+            if len(daily_data) >= 7:
+                break
+
+        # Process the last day
+        if current_date and daily_temps_max and daily_temps_min:
+            daily_data.append({
+                'dt': last_dt,
+                'main': {
+                    'temp_max': max(daily_temps_max),
+                    'temp_min': min(daily_temps_min),
+                },
+                'weather': item['weather']
+            })
 
         return daily_data

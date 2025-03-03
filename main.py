@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from weather_service import WeatherService
-from visualization import create_hourly_temp_chart, create_daily_temp_chart
+from visualization import create_hourly_temp_chart
 from styles import apply_custom_styles, get_weather_icon
 
 # Page configuration
@@ -14,6 +14,16 @@ st.set_page_config(
 # Apply custom styles
 apply_custom_styles()
 
+hide_streamlit_style = """
+<style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+[data-testid="stToolbar"] {visibility: hidden !important;}
+</style>
+
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
 try:
     # Initialize weather service
     weather_service = WeatherService()
@@ -24,7 +34,7 @@ try:
 
     # Get list of popular cities for suggestions
     popular_cities = [
-        "Johannesburg", "Cape Town", "Durban", "Pretoria", "Port Elizabeth",
+        "Johannesburg", "Cape Town", "Durban", "Pretoria", "Port Elizabeth", "Bloemfontein", "East London", "Pietermaritzburg", "Kimberley", "Polokwane", "Mbombela", "Potchefstroom", "Umtata",
         "London", "New York", "Tokyo", "Paris", "Sydney", "Dubai"
     ]
 
@@ -54,7 +64,8 @@ try:
                     st.markdown(f"""
                         <div class="weather-card">
                             <i class="{get_weather_icon(current['weather'][0]['main'])} weather-icon"></i>
-                            <div class="temp-text">{round(current['main']['temp'])}°C</div>
+                            <div>‎ </div>
+                            <div>‎ </div>
                             <div class="condition-text">{current['weather'][0]['description'].capitalize()}</div>
                         </div>
                     """, unsafe_allow_html=True)
@@ -63,21 +74,12 @@ try:
                     st.markdown(f"""
                         <div class="weather-card">
                             <i class="fas fa-temperature-high weather-icon"></i>
-                            <div class="temp-text">{round(current['main']['temp_max'])}°C</div>
-                            <div class="condition-text">Max Temperature</div>
+                            <div class="temp-text">{round(current['main']['temp'])}°C</div>
+                            <div class="condition-text">Temperature</div>
                         </div>
                     """, unsafe_allow_html=True)
 
                 with col3:
-                    st.markdown(f"""
-                        <div class="weather-card">
-                            <i class="fas fa-temperature-low weather-icon"></i>
-                            <div class="temp-text">{round(current['main']['temp_min'])}°C</div>
-                            <div class="condition-text">Min Temperature</div>
-                        </div>
-                    """, unsafe_allow_html=True)
-
-                with col4:
                     # Convert wind speed from m/s to km/h (multiply by 3.6)
                     wind_speed_kmh = round(current['wind']['speed'] * 3.6)
                     st.markdown(f"""
@@ -87,6 +89,9 @@ try:
                             <div class="condition-text">Wind Speed</div>
                         </div>
                     """, unsafe_allow_html=True)
+
+                with col4:
+                    st.empty()
 
                 # Additional weather info
                 col1, col2 = st.columns(2)
@@ -114,9 +119,7 @@ try:
                 st.plotly_chart(create_hourly_temp_chart(hourly_data), use_container_width=True)
 
                 # Daily forecast
-                st.subheader("7-Day Forecast")
-                daily_data = weather_service.process_daily_forecast({"daily": weather_data['daily']})
-                st.plotly_chart(create_daily_temp_chart(daily_data), use_container_width=True)
+                daily_data = weather_service.process_daily_forecast(weather_data['daily'])
 
                 # Detailed daily forecast
                 st.subheader("Detailed Daily Forecast")
