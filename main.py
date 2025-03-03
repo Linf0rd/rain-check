@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from datetime import datetime
 from weather_service import WeatherService
 from visualization import create_hourly_temp_chart
 from styles import apply_custom_styles, get_weather_icon
@@ -19,6 +20,9 @@ hide_streamlit_style = """
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 [data-testid="stToolbar"] {visibility: hidden !important;}
+[data-testid="column"]:nth-child(4) .weather-card {
+    margin-bottom: 30px; /* Adjust this value as needed */
+}
 </style>
 
 """
@@ -34,7 +38,9 @@ try:
 
     # Get list of popular cities for suggestions
     popular_cities = [
-        "Johannesburg", "Cape Town", "Durban", "Pretoria", "Port Elizabeth", "Bloemfontein", "East London", "Pietermaritzburg", "Kimberley", "Polokwane", "Mbombela", "Potchefstroom", "Umtata",
+        "Johannesburg", "Cape Town", "Durban", "Pretoria", "Gqeberha (Port Elizabeth)", "Bloemfontein", "East London", "Kimberley", "Polokwane", "Mbombela (Nelspruit)", "Pietermaritzburg",
+        "Rustenburg", "George", "Stellenbosch", "Worcester", "Upington", "Klerksdorp", "Newcastle", "Mthatha", "Vereeniging", "Vanderbijlpark", "Welkom", "Witbank (eMalahleni)",
+        "Beaufort West", "Graaff-Reinet", "Oudtshoorn", "Swellendam", "Paarl", "Springbok", "Vryburg", "Bethlehem", "Harrismith", "Ladysmith", "Richards Bay", "Potchefstroom", "Kroonstad", "Queenstown(Komani)", "Mahikeng(Mafikeng)", "Phalaborwa",
         "London", "New York", "Tokyo", "Paris", "Sydney", "Dubai"
     ]
 
@@ -91,7 +97,26 @@ try:
                     """, unsafe_allow_html=True)
 
                 with col4:
-                    st.empty()
+                    now = datetime.now()
+                    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+                    st.markdown(f"""
+                        <div class="weather-card">
+                            <div> </div>
+                            <div class="temp-text">{dt_string}</div>
+                            <div class="condition-text">Date & Time</div>
+                        </div>
+                    """, unsafe_allow_html=True)
+
+                    st.markdown("""
+                        <script>
+                        function updateTime() {
+                            var now = new Date();
+                            var dt_string = now.toLocaleTimeString();
+                            document.querySelector('.weather-card div').innerText = dt_string;
+                        }
+                        setInterval(updateTime, 1000);
+                        </script>
+                    """, unsafe_allow_html=True)
 
                 # Additional weather info
                 col1, col2 = st.columns(2)
@@ -124,24 +149,17 @@ try:
                 # Detailed daily forecast
                 st.subheader("Detailed Daily Forecast")
                 for _, row in daily_data.iterrows():
-                    col1, col2 = st.columns([1, 3])
-                    with col1:
-                        st.markdown(f"""
-                            <div class="weather-card">
-                                <div style="font-weight: bold">{row['day']}</div>
-                                <i class="{get_weather_icon(row['weather'][0]['main'])} weather-icon"></i>
+                    st.markdown(f"""
+                        <div class="weather-card">
+                            <div style="font-weight: bold">{row['day']}</div>
+                            <i class="{get_weather_icon(row['weather'][0]['main'])} weather-icon"></i>
+                            <div style="font-size: 1.2rem">
+                                <span style="color: #FF4B4B">High: {row['temp_day']}°C</span> | 
+                                <span style="color: #4B9FFF">Low: {row['temp_night']}°C</span>
                             </div>
-                        """, unsafe_allow_html=True)
-                    with col2:
-                        st.markdown(f"""
-                            <div class="weather-card">
-                                <div style="font-size: 1.2rem">
-                                    <span style="color: #FF4B4B">High: {row['temp_day']}°C</span> | 
-                                    <span style="color: #4B9FFF">Low: {row['temp_night']}°C</span>
-                                </div>
-                                <div>{row['weather'][0]['description'].capitalize()}</div>
-                            </div>
-                        """, unsafe_allow_html=True)
+                            <div>{row['weather'][0]['description'].capitalize()}</div>
+                        </div>
+                    """, unsafe_allow_html=True)
 
         except ValueError as e:
             st.error(f"⚠️ {str(e)}")
